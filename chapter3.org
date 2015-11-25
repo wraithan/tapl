@@ -3,6 +3,7 @@
 ** 3.2.3
 
 S_0   = \emptyset
+
 S_{i+1} = {true, false, 0}
      \cup {succ t_1, pred t_1, iszero t_1 | t_1 \in S_i}
      \cup {if t_1 then t_2 else t_3 | t_1, t_2, t_3 \in S_i}.
@@ -40,6 +41,7 @@ values to inject. This gives us 3 \times 3. Finally we have the 3 constants to b
 into the set.
 
 length(S_2) = 3^3 + (3 \times 3) + 3
+
 length(S_2) = 39
 
 **** S_3
@@ -48,8 +50,9 @@ If we continue with the logic of S_2, considering that there are 39 terms to
 inject from the length of S_2, we can just follow the previous math:
 
 length(S_3) = 39^3 + (3 \times 39) + 3
+
 length(S_3) = 59319 + 117 + 3
+
 length(S_3) = 59439
 
-** 3.2.5
 
