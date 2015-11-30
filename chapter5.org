@@ -1,0 +1,302 @@
+* 5 The Untyped Lambda Calculus
+ 
+** 5.1 Basics
+
+*** Bound vs Unbound values
+Bound values are values used as part of a lambda abstraction's body. Unbound or
+free values are ones that are used as arguments to lambda abstraction.
+
+*** Beta Reduction
+
+Given: (\lambda{}x. x (\lambda{}x. x)) (u r)
+
+Because the first lambda abstraction is x applied over x (\lambda{}x. x), with the
+argument (u r). We apply that lambda abstraction on the argument and get:
+
+(u r) (\lambda{}x. x)
+
+Because we don't have a definition for u or r, they are assumed to be values.
+Lambda abstraction \lambda{}x. x doesn't have any arguments so we can't reduce it from
+its function form.
+
+*** Full Beta Reduction
+
+Because you can choose any redex (reduction expression) to start with, the
+following lambda expression(?) has multiple paths through it:
+
+Picking rightmost, then leftmost, then the remaining would result in:
+
+Given: (\lambda{}x. x) ((\lambda{}x. x) (\lambda{}z. (\lambda{}x. x) z))
+(\lambda{}x. x) ((\lambda{}x. x) (\lambda{}z. z))
+(\lambda{}x. x) (\lambda{}z. z)
+\lambda{}z. z
+
+*** Normal Order Strategy
+
+Always picking from leftmost/outermost is known as normal order.
+
+Given: (\lambda{}x. x) ((\lambda{}x. x) (\lambda{}z. (\lambda{}x. x) z))
+(\lambda{}x. x) (\lambda{}z. (\lambda{}x. x) z)
+\lambda{}z. (\lambda{}x. x) z
+\lambda{}z. z
+
+*** Call by name strategy
+
+Call by name doesn't allow for reductions within abstractions, while still going
+in normal order. It also only reduces arguments if they are required to be
+reduced in order to continue evaluation
+
+Given: (\lambda{}x. x) ((\lambda{}x. x) (\lambda{}z. (\lambda{}x. x) z))
+(\lambda{}x. x) (\lambda{}z. (\lambda{}x. x) z)
+\lambda{}z. (\lambda{}x. x) z
+
+Since the final step is an abstraction with no arguments, we can't reduce it
+anymore. Even though we know that the term on the inside is an abstraction to be
+applied to the argument to the outer abstraction and it would result in the same
+value either way.
+
+*** Call by value strategy
+
+Call by value strictly requires that arguments get evaluated before being passed
+into abstractions. Call by name does not require that. This makes call by value
+a strict or eager strategy where call by name is not.
+
+Given: 
+(\lambda{}x. x) ((\lambda{}x. x) (\lambda{}z. (\lambda{}x. x) z))
+\rightarrow (\lambda{}x. x) (\lambda{}z. (\lambda{}x. x) z)
+\rightarrow \lambda{}z. (\lambda{}x. x) z
+
+** 5.2 Programming in the Lambda Calculus
+
+*** Church Booleans
+
+True := \lambda{}t. \lambda{}f. t
+False := \lambda{}t. \lambda{}f. f
+
+This is an example of a multiple argument lambda using higher order functions.
+It is cool not only do we get something can distill down to a constant of true
+or false. But we can use those functions directly to implement if/then/else.
+
+IfElse := \lambda{}l. \lambda{}m. \lambda{}n. l m n
+
+If you pass a boolean as l, and a success case x to m, and a failure case y to n you get:
+
+IfElse True x y \rightarrow* x
+IfElse False x y \rightarrow* y
+
+Lets walk through with an interpolated value.
+
+  IfElse True a b
+= (\lambda{}l. \lambda{}m. \lambda{}n. l m n) True a b
+\rightarrow (\lambda{}m. \lambda{}n. True) a b
+\rightarrow (\lambda{}n. True a) b
+\rightarrow True a b
+= (\lambda{}t. \lambda{}f. t) a b
+\rightarrow (\lambda{}f. a) b
+\rightarrow a
+
+And := \lambda{}b. \lambda{}c. b c False
+
+Pass the two things you'd like to boolean and into And:
+
+  And True True
+= (\lambda{}b. \lambda{}c. b c False) True True
+\rightarrow (\lambda{}c. True c False) True
+\rightarrow True True False
+= (\lambda{}t. \lambda{}f. t f) True False
+\rightarrow (\lambda{}f. True) False
+\rightarrow True
+
+** 5.2.1 Define boolean OR and NOT
+
+*** Or
+
+Or := \lambda{}b. \lambda{}c. b True c
+
+Or True True \rightarrow* True
+Or True False \rightarrow* True
+Or False True \rightarrow* True
+Or False False \rightarrow* False
+
+Logical reasoning: If the first value is True, return True since this is Or and
+one True is enough to consider the whole expression True. Otherwise return the
+other value, which assuming a True or False were passed into the second slot it
+will result in True or False being returned and because of the Or expression
+this is the only value left to check this will result in the correct answer.
+
+*** Not
+
+Not := \lambda{}b. b False True
+
+Not False \rightarrow* True
+Not True \rightarrow* False
+
+Logical reasoning: Since the boolean values are left/right branch evaluators on
+their own, just apply them to the inverse values and get back the inversion
+which Not is required to do.
+
+** Church numerals
+
+c_0 := \lambda{}s. \lambda{}z. z
+c_1 := \lambda{}s. \lambda{}z. s z
+c_2 := \lambda{}s. \lambda{}z. s (s z)
+c_3 := \lambda{}s. \lambda{}z. s (s (s z))
+
+Succ1 := \lambda{}n. \lambda{}s. \lambda{}z. s (n s z)
+
+  Succ1 c_2
+= (\lambda{}n. \lambda{}s. \lambda{}z. s (n s z)) c_2
+\rightarrow \lambda{}s. \lambda{}z. s (c_2 s z)
+= \lambda{}s. \lambda{}z. s ((\lambda{}s. \lambda{}z. s (s z)) s z) // Call by value limit
+= c'_3
+
+  Succ1 c_0
+= (\lambda{}n. \lambda{}s. \lambda{}z. s (n s z)) c_0
+\rightarrow \lambda{}s. \lambda{}z. s (c_0 s z)
+= \lambda{}s. \lambda{}z. s ((\lambda{}s. \lambda{}z. z) s z) // Call by value limit
+= c'_1
+
+** 5.2.2 Find another way to define the successor function on Church numerals
+
+Question: Why is it `s (n s z)` instead of just `s n`?
+
+Succ2 := \lambda{}n. \lambda{}s. \lambda{}z. s n
+
+  Succ2 c_2
+= (\lambda{}n. \lambda{}s. \lambda{}z. s n) c_2
+\rightarrow \lambda{}s. \lambda{}z. s c_2
+= \lambda{}s. \lambda{}z. s (\lambda{}s. \lambda{}z. s (s z))
+
+Answer: The application of n over s and z is to consume the lambda abstractions
+at the outer edge of n so it results in just the body being pulled out giving us
+a Church numeral.
+
+Question: Could number be applied to the outside of the new s instead of
+applying the new s to the outside of the number?
+
+Note: Keep in mind you have to pass (s z) into the result to consume the lambda
+abstractions or at least make it possible to consume them once a value is passed
+in.
+
+Succ3 := \lambda{}n. \lambda{}s. \lambda{}z. n s (s z)
+
+  Succ3 c_2
+= (\lambda{}n. \lambda{}s. \lambda{}z. n s (s z)) c_2
+\rightarrow \lambda{}s. \lambda{}z. c_2 s (s z)
+= \lambda{}s. \lambda{}z. (\lambda{}s. \lambda{}z s (s z)) s (s z)
+\rightarrow \lambda{}s. \lambda{}z. (\lambda{}z. s (s z) (s z)
+\rightarrow \lambda{}s. \lambda{}z. s (s (s z))
+= c'_3
+
+I'm uncertain about whether the call by value limit would be hit here.
+
+** 5.2.3 Is it possible to define multiplication on Church numerals without using Plus?
+
+Plus := \lambda{}a. \lambda{}b. a Succ b
+
+  Plus c_1 c_2
+= (\lambda{}a. \lambda{}b. a Succ b) c_1 c_2
+\rightarrow (\lambda{}b. c_1 Succ b) c_2
+\rightarrow c_1 Succ c_2
+= (\lambda{}s. \lambda{}z. s z) Succ c_2
+\rightarrow (\lambda{}z. Succ z) c_2
+\rightarrow Succ c_2
+\rightarrow* c'_3
+
+Times := \lambda{}m. \lambda{}n. m (plus n) c_0
+
+  Times c_2 c_3
+= (\lambda{}m. \lambda{}n. m (Plus n) c_0) c_2 c_3
+\rightarrow (\lambda{}n. c_2 (Plus n) c_0) c_3
+\rightarrow c_2 (Plus c_3) c_0
+= c_2 ((\lambda{}a. \lambda{}b. a Succ b) c_3) c_0
+\rightarrow c_2 (\lambda{}b. c_3 Succ b) c_0
+\rightarrow c_2 (c_3 Succ) c_0
+= c_2 ((\lambda{}s. \lambda{}z s (s (s z))) Succ) c0
+\rightarrow c_2 (\lambda{}z. Succ (Succ (Succ z))) c_0
+\rightarrow c_2 (Succ (Succ (Succ c_0)))
+\rightarrow*c'_6
+
+
+Times works because it is applying successor to 0 the number of times that the
+second church numeral dictates. Then you take the resulting church numeral and
+apply it the number of times that the first church numeral dictates, resulting
+in m \times n.
+
+** 5.2.4 (recommended) Define a term for raising one number to the power of another.
+
+** 5.2.5 Use Pred to define a subraction function.
+
+Subtract := \lambda{}m. \lambda{}n. n pred m
+
+  Subtract c_2 c_1
+= (\lambda{}m. \lambda{}n. n pred m) c_2 c_1
+\rightarrow (\lambda{}n. n pred c_2) c_1
+\rightarrow c_1 pred c_2
+= (\lambda{}s. \lambda{}z. s z) pred c_2
+\rightarrow (\lambda{}z. pred z)
+\rightarrow pred c_2
+\rightarrow*c'_1
+
+** 5.2.6 Approximately how many steps of evaluation (as a function of n) are required to calculate Pred c_n?
+
+** 5.2.7 Write a function Equal that tests two numbers for equality and returns a Church boolean.
+
+Equal := \lambda{}a. \lambda{}b. And (IsZero (b pred a)) (IsZero (a pred b))
+
+** TODO 5.2.8 (recommended) Basically implement lisp in lambda calculus:
+
+Given Pair, First and Second as primatives for holding and manipulating tuples,
+which are like lists but with only 2 elements, likely I need to work from there.
+Like the old books with Cons/Car/Cdr and are trying to teach you to build your
+own lisp.
+
+Using those as the primative ideas I know that I can store a marker in the first
+position that lets you know if the second position is empty or if it has
+something.
+
+(Pair True (Pair v (Pair False False))
+
+Nil := Pair False False
+IsNil := \lambda{}p. Not (First p) 
+Cons := \lambda{}l. \lambda{}r. Pair True (Pair l r)
+Head := \lambda{}p. (IsNil p) p (First (Second p))
+Tail := \lambda{}p. (IsNil p) p (Second (Second p))
+
+  Cons v Nil
+= (\lambda{}l. \lambda{}r. Pair True (Pair l r)) v Nil
+\rightarrow (\lambda{}r. Pair True (Pair v r)) Nil
+\rightarrow Pair True (Pair v Nil)
+
+  Cons k (Pair True (Pair v Nil))
+= (\lambda{}l. \lambda{}r. Pair True (Pair l r)) k (Pair True (Pair v Nil))
+\rightarrow (\lambda{}r. Pair True (Pair k r) (Pair True (Pair v Nil))
+\rightarrow Pair True (Pair k (Pair True (Pair v Nil)))
+
+  Head (Pair True (Pair k (Pair True (Pair v Nil))))
+= \lambda{}p. (IsNil p) p (First (Second p)) 
+\rightarrow (IsNil (Pair True (Pair k (Pair True (Pair v Nil))))) (Pair True (Pair k (Pair True (Pair v Nil)))) (First (Second (Pair True (Pair k (Pair True (Pair v Nil))))))
+= (Not (First (Pair True (Pair k (Pair True (Pair v Nil)))))) (Pair True (Pair k (Pair True (Pair v Nil)))) (First (Second (Pair True (Pair k (Pair True (Pair v Nil))))))
+\rightarrow*(Not True) (Pair True (Pair k (Pair True (Pair v Nil)))) (First (Second (Pair True (Pair k (Pair True (Pair v Nil))))))
+\rightarrow*False (Pair True (Pair k (Pair True (Pair v Nil)))) (First (Second (Pair True (Pair k (Pair True (Pair v Nil))))))
+\rightarrow*(First (Second (Pair True (Pair k (Pair True (Pair v Nil))))))
+\rightarrow*(First (Pair k (Pair True (Pair v Nil))))
+\rightarrow*k
+
+** 5.2.9.a Why did they use primitive if in the definition of g instead of the Church boolean IfElse function on Church booleans?
+
+** 5.2.9.b Show how to define the Factorial function in terms of IfElse rather than primitive if.
+
+** 5.2.10 Define a function ChurchNat that converts a primitive natural number into the corresponding Church numeral.
+
+** 5.2.11 (recommended) Use Fix and the encoding of lists from Exercise 5.2.8 to write a function that sums lists of church numerals.
+
+** 5.3.3 Give a careful proof that \vert{}FV(t)\vert{} \le size(t) for every term t.
+
+** 5.3.6 Adapt the lambda calculus evaluation rules to describe the other three strategies for evaluation:
+
+*** full beta-reduction
+
+*** normal-order
+
+*** lazy evaluation
